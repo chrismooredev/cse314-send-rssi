@@ -2,11 +2,13 @@
 const cp = require('child_process');
 const noble = require('@abandonware/noble');
 
+// mark our known MAC addresses
 const emac  = '00:1b:10:60:4c:9e' // external module addr to connect to
 const emac2 = '00:1b:10:60:4d:9e' // external module, advertised until connected to
 const imac  = 'e0:9f:2a:ea:db:a7' // internal, advertised, used to get RSSI
 const serial_service_uuid = '00001101-0000-1000-8000-00805f9b34fb'
 
+// how often we send a value to the bot/over what time we smooth the RSSI updates
 const UPDATE_FREQ_MS = 1000;
 
 const addrMap = {
@@ -15,6 +17,7 @@ const addrMap = {
 	[emac2]: "OO <<"
 }
 
+// start scanning for BLE when the bluetooth radio is available to us
 noble.on('stateChange', function (state) {
 	if (state === 'poweredOn') {
 		noble.startScanning([], true, e => {
@@ -29,6 +32,7 @@ noble.on('stateChange', function (state) {
 let connecting = false;
 let connected = false;
 
+// open the python script that connects to the bot
 let pyproc = cp.spawn('python3', ['rssi_loop.py'])
 function establishPyProc() {
 	pyproc.stdout.on('data', d => {
@@ -40,6 +44,7 @@ function establishPyProc() {
 		console.error('python: ' + d);
 	})
 	pyproc.on("close", e => {
+		// restart the python script if it crashes (bluetooth disconnects, ...)
 		pyproc = cp.spawn('python3', ['rssi_loop.py']);
 		establishPyProc()
 	})
@@ -47,12 +52,13 @@ function establishPyProc() {
 establishPyProc()
 
 let last_sent = Date.now();
+/** @type {number[]} */
 let period = [];
+// send the RSSI value to the bot via the python script
 function sendRssi(addr, rssi) {
 	let now = Date.now();
 	period.push(rssi);
 	if(last_sent + UPDATE_FREQ_MS < now) {
-		/** @type {number} */
 		let smoothed = (period.reduce((p, c) => p + c)/period.length).toFixed(0);
 		console.log(`rssi update: ${addr}, ${rssi} (smoothed: ${smoothed})`);
 		period = [];
@@ -63,6 +69,7 @@ function sendRssi(addr, rssi) {
 }
 
 noble.on('discover', function (peripheral) {
+	// this code is ran on every BLE advertisement/RSSI update
 	let bleAddr = peripheral.address;
 	let bleRssi = peripheral.rssi;
 	let bleName = (peripheral.advertisement.localName || '').padEnd(32, ' ')
@@ -102,6 +109,7 @@ noble.on('discover', function (peripheral) {
 		// }
 	// } else if(!connected) {
 		if(bleAddr in addrMap) {
+			// only send RSSI for known devices
 			sendRssi(bleAddr, bleRssi);
 		}
 	// }

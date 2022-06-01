@@ -2,6 +2,8 @@ from bluepy.btle import Scanner, DefaultDelegate
 from collections import defaultdict
 import time
 
+# Used to filter the output
+#  KNOWN_MACS = []
 KNOWN_MACS = [
     '00:1B:10:60:4D:9E',
     '00:1B:10:60:4C:9E',
@@ -14,34 +16,33 @@ class ScanDelegate(DefaultDelegate):
         self.found = dict()
 
     def handleDiscovery(self, dev, isNewDev, isNewData):
-        if dev.addr.upper() not in KNOWN_MACS:
+        if len(KNOWN_MACS) > 0 and dev.addr.upper() not in KNOWN_MACS:
             return
 
-        d = self.found.get(dev.addr)
-        if d is None:
-            d = {"id": len(self.found), "rssi": None, "last_update": None }
-            self.found[dev.addr] = d
+        # mark this entry as new
+        d = self.found.setdefault(dev.addr,
+            {"id": len(self.found), "rssi": None, "last_update": None }
+        )
 
-        if isNewData:
-            last_seen = "new"
-        else:
-            last_seen = "upd:%02.2fs" % (time.time() - d["last_update"])
+        # log a prefix
+        last_seen = "new" if isNewData else "upd:%02.2fs" % (time.time() - d["last_update"])
 
-        if d["rssi"] is None:
-            rssi_upd8 = ""
-        else:
+        # set our rssi update string - empty if was no previous value
+        rssi_upd8 = ""
+        if d["rssi"] is not None:
             chg = dev.rssi - d["rssi"]
             rssi_upd8 = " (%+d)" % chg
 
-        print("[%.02f][id=%d][%s] Device %s (%s), RSSI=%d dB%s" % (time.time(), d["id"], last_seen, dev.addr, dev.addrType, dev.rssi, rssi_upd8))
+        # log our update to the screen
+        print("[%.02f][id=%d][%s] Device %s (%s), RSSI=%d dB%s" %
+            (time.time(), d["id"], last_seen, dev.addr, dev.addrType, dev.rssi, rssi_upd8)
+        )
 
+        # update the update time and RSSI for the next iteration
         d["last_update"] = time.time()
         d["rssi"] = dev.rssi
-        # if isNewDev:
-        #     print("Discovered device", dev.addr)
-        # elif isNewData:
-        #     print("Received new data from", dev.addr)
 
+# setup the scanners
 scanner = Scanner().withDelegate(ScanDelegate())
 devices = scanner.scan(None)
 print('done')
