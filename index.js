@@ -59,8 +59,9 @@ function sendRssi(addr, rssi) {
 	let now = Date.now();
 	period.push(rssi);
 	if(last_sent + UPDATE_FREQ_MS < now) {
+		let time = new Date().getTime().toString();
 		let smoothed = (period.reduce((p, c) => p + c)/period.length).toFixed(0);
-		console.log(`rssi update: ${addr}, ${rssi} (smoothed: ${smoothed})`);
+		console.log(`[${time}] sending rssi update from ${addr} (latest: ${rssi}) (smoothed: ${smoothed}, ${period.length} samples over ${UPDATE_FREQ_MS}ms)`);
 		period = [];
 
 		pyproc.stdin.write(smoothed + '\n');

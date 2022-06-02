@@ -9,12 +9,12 @@ Made up of two main scripts:
 * `btle_scan.py` is used for debugging scanning available BLE devices. (eg: those that are advertising)
 
 Needs python3 with packages:
-    * `bluetooth`
+* `bluetooth`
 
 Needs nodejs with packages:
-    * `@abandonware/noble`
+* `@abandonware/noble`
 
 Needs some combination of apt packages:
-    * `libglib2.0-dev`
-    * `bluez-hcidump`
-    * `bluez-tools`
+* `libglib2.0-dev`
+* `bluez-hcidump`
+* `bluez-tools`
